@@ -1,0 +1,8 @@
+[project]
+name = "mellea-resume-readiness"
+version = "0.1.0"
+description = "Resume skills-gap analyzer built with Mellea"
+requires-python = ">=3.11"
+dependencies = [
+    "mellea>=0.8.0",
+]
