@@ -63,5 +63,16 @@ ollama serve                  # if Ollama isn't already running
 
 > **Why the series filter?** USAJOBS only lists federal jobs, and federal job titles rarely say "software developer". Searching that keyword near Miami returned just 1 posting, and a plain "software" keyword pulled in unrelated jobs such as medical coders. Filtering by occupational series 2210 (IT Management) and 1550 (Computer Science) instead returns relevant tech postings.
 
+## Test data: sample resumes
+
+`scripts/fetch_resumes.py` downloads the [Resume Dataset](https://huggingface.co/datasets/Sachinkelenjaguri/Resume_dataset) from Hugging Face and saves it as JSON. The included file, `data/resumes.json`, has 962 resumes across 25 job categories (only 166 are unique, the source repeats the rest). It records the source, when it was fetched, and a list of resumes with `category` and `resume` (the full text).
+
+### Re-running the fetch
+No API key is needed:
+```bash
+uv run scripts/fetch_resumes.py
+```
+The output goes to `data/resumes.json`, overwriting any earlier fetch.
+
 ## How to contribute
 Fork this repo, pick an open issue, and open a pull request. The interface (CLI, notebook, or web app) is your team's choice — the issues specify the outcome, not the implementation.
