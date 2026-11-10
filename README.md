@@ -74,5 +74,25 @@ uv run scripts/fetch_resumes.py
 ```
 The output goes to `data/resumes.json`, overwriting any earlier fetch.
 
-## How to contribute
-Fork this repo, pick an open issue, and open a pull request. The interface (CLI, notebook, or web app) is your team's choice — the issues specify the outcome, not the implementation.
+### Browsing and loading the resumes
+`scripts/load_resumes.py` reads `data/resumes.json` and prints the resumes. With no arguments it lists all 962 resumes, duplicates included, one line each: `#<index>  [<category>]  <char count>  <first 60 chars>...`, then a summary line.
+```bash
+uv run scripts/load_resumes.py # lists every resume
+uv run scripts/load_resumes.py --category "Data Science" --unique --limit 5
+uv run scripts/load_resumes.py --search "tensorflow" --full --limit 1
+uv run scripts/load_resumes.py --index 12 --full
+```
+
+The flags are optional and can be combined. A resume must match all of them to be shown.
+
+| Flag | What it does |
+| --- | --- |
+| `--category NAME` | Only resumes in this category (case-insensitive). An unknown name prints the valid categories with counts and exits with status 2. |
+| `--search TEXT` | Only resumes whose text contains `TEXT` (case-insensitive). |
+| `--unique` | Drop duplicate resume texts, keeping the first. |
+| `--limit N` | Show at most `N` resumes. |
+| `--index I` | Show only resume `#I`. Indexes start at 0 and always refer to the position in the file, whatever other filters are used. |
+| `--full` | Print the complete resume text (with a header line) instead of the one-line summary. |
+| `--max-chars N` | With `--full`, cut each resume off after `N` characters and note how many were left out. Default `0` means no limit. |
+| `--list-categories` | Print each category and its resume count, then exit. |
+
