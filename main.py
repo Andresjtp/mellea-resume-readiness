@@ -1,9 +1,3 @@
-"""Entry point for the Resume Skills-Gap Analyzer.
-
-For now this is a smoke check confirming the environment is set up and
-Mellea is importable. Replace with the real app as features land.
-"""
-
 from importlib.metadata import version
 
 
