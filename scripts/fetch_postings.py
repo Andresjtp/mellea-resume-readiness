@@ -8,7 +8,7 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 API_URL = "https://data.usajobs.gov/api/search"
@@ -17,7 +17,6 @@ DATA_DIR = PROJECT_ROOT / "data"
 
 
 def load_dotenv(path: Path) -> None:
-    """Minimal .env loader (KEY=VALUE lines) so we don't need an extra dependency."""
     if not path.exists():
         return
     for line in path.read_text().splitlines():
@@ -28,16 +27,13 @@ def load_dotenv(path: Path) -> None:
         os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
 
-def search(keyword: str, location: str, count: int, radius: int, series: str | None, api_key: str, email: str) -> dict:
+def search(keyword: str, location: str, count: int, api_key: str, email: str) -> dict:
     params = {
         "Keyword": keyword,
         "LocationName": location,
-        "Radius": radius,
         "ResultsPerPage": count,
         "Fields": "Full",  # includes the full job summary and major duties
     }
-    if series:
-        params["JobCategoryCode"] = series  # e.g. "2210;1550"
     req = urllib.request.Request(
         f"{API_URL}?{urllib.parse.urlencode(params)}",
         headers={
@@ -84,20 +80,33 @@ def slugify(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
 
 
+def prompt(label: str) -> str:
+    """Ask for a value until a non-empty one is entered."""
+    while True:
+        answer = input(f"{label}: ").strip()
+        if answer:
+            return answer
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--keyword", default="", help='free-text keyword, e.g. "software developer" (default: none)')
-    parser.add_argument("--location", default="Miami, FL")
+    parser.add_argument("--keyword", help='search keyword, e.g. "software developer" (prompted if omitted)')
+    parser.add_argument("--location", help='search location, e.g. "Miami, FL" (prompted if omitted)')
     parser.add_argument("--count", type=int, default=20, help="number of postings to save (max 500)")
-    parser.add_argument("--radius", type=int, default=50, help="search radius in miles around --location")
-    parser.add_argument(
-        "--series",
-        default="2210;1550",
-        help='federal occupational series, semicolon-separated (default: "2210;1550" = IT Management + '
-        'Computer Science, where federal software jobs are listed); pass "" to search all jobs',
-    )
-    parser.add_argument("--out", type=Path, help="output file (default: data/postings_<keyword-or-series>_<location>.json)")
+    parser.add_argument("--out", type=Path, help="output file (default: data/postings_<keyword>_<location>.json)")
     args = parser.parse_args()
+
+    missing = [name for name in ("keyword", "location") if not getattr(args, name)]
+    if missing and not sys.stdin.isatty():
+        parser.error("provide " + " and ".join(f"--{name}" for name in missing) + " when not running interactively")
+    try:
+        if not args.keyword:
+            args.keyword = prompt("Keyword")
+        if not args.location:
+            args.location = prompt("Location")
+    except (EOFError, KeyboardInterrupt):
+        print("\nCancelled.", file=sys.stderr)
+        return 1
 
     load_dotenv(PROJECT_ROOT / ".env")
     api_key = os.environ.get("USAJOBS_API_KEY")
@@ -107,7 +116,7 @@ def main() -> int:
         return 1
 
     try:
-        raw = search(args.keyword, args.location, args.count, args.radius, args.series, api_key, email)
+        raw = search(args.keyword, args.location, args.count, api_key, email)
     except urllib.error.HTTPError as e:
         print(f"USAJOBS request failed: HTTP {e.code} {e.reason}", file=sys.stderr)
         return 1
@@ -115,17 +124,11 @@ def main() -> int:
     result = raw.get("SearchResult", {})
     postings = [normalize(item) for item in result.get("SearchResultItems", [])]
 
-    name = slugify(args.keyword) or (f"series-{slugify(args.series)}" if args.series else "all")
-    out = args.out or DATA_DIR / f"postings_{name}_{slugify(args.location)}.json"
+    out = args.out or DATA_DIR / f"postings_{slugify(args.keyword)}_{slugify(args.location)}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     payload = {
-        "query": {
-            "keyword": args.keyword,
-            "location": args.location,
-            "radius_miles": args.radius,
-            "series": args.series,
-        },
-        "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "query": {"keyword": args.keyword, "location": args.location},
+        "fetched_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "total_available": result.get("SearchResultCountAll"),
         "count": len(postings),
         "postings": postings,
@@ -136,7 +139,7 @@ def main() -> int:
         shown = shown.relative_to(PROJECT_ROOT)
     print(f"Saved {len(postings)} postings ({payload['total_available']} available) to {shown}")
     if len(postings) < args.count:
-        print("Fewer results than requested; try a broader --keyword or a larger --radius.", file=sys.stderr)
+        print("Fewer results than requested; try a broader --keyword or a different --location.", file=sys.stderr)
     return 0
 
 

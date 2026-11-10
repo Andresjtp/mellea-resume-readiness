@@ -44,7 +44,7 @@ ollama serve                  # if Ollama isn't already running
 
 ## Test data: real job postings
 
-`data/` holds real postings pulled from the [USAJOBS Search API](https://developer.usajobs.gov/), saved as JSON. The included file, `data/postings_series-2210-1550_miami-fl.json`, has 20 IT and computer science postings within 50 miles of Miami, FL. Each file records the query, when it was fetched, and a list of postings with `title`, `organization`, `locations`, `salary`, `summary`, `duties`, `qualifications`, `url`, and so on.
+`data/` holds real postings pulled from the [USAJOBS Search API](https://developer.usajobs.gov/), saved as JSON. The included file, `data/postings_information-technology_miami-fl.json`, has 20 postings for the keyword "information technology" in Miami, FL. Each file records the query, when it was fetched, and a list of postings with `title`, `organization`, `locations`, `salary`, `summary`, `duties`, `qualifications`, `url`, and so on.
 
 ### Re-running the fetch
 1. Request a free API key at <https://developer.usajobs.gov/apirequest/>.
@@ -53,15 +53,20 @@ ollama serve                  # if Ollama isn't already running
    USAJOBS_API_KEY=your-key
    USAJOBS_EMAIL=you@example.com
    ```
-3. Run the fetch:
-   ```bash
-   uv run scripts/fetch_postings.py                       # defaults: IT/CS jobs within 50 mi of Miami, FL, 20 results
-   uv run scripts/fetch_postings.py --keyword "cybersecurity" --location "Orlando, FL" --radius 100
-   uv run scripts/fetch_postings.py --keyword "data analyst" --series ""   # search all job series
+3. Run the fetch. It asks for a keyword and a location:
    ```
-   The output goes to `data/postings_<keyword-or-series>_<location>.json`, overwriting any earlier fetch of the same query. Run `--help` to see all options.
+   $ uv run scripts/fetch_postings.py
+   Keyword: cybersecurity
+   Location: Miami, FL
+   Saved 20 postings (20 available) to data/postings_cybersecurity_miami-fl.json
+   ```
+   You can also pass them as options to skip the prompts. Both options are required when the script isn't run from a terminal (for example, from another script):
+   ```bash
+   uv run scripts/fetch_postings.py --keyword "cybersecurity" --location "Orlando, FL"
+   ```
+   The output goes to `data/postings_<keyword>_<location>.json`, overwriting any earlier fetch of the same query. Run `--help` to see all options.
 
-> **Why the series filter?** USAJOBS only lists federal jobs, and federal job titles rarely say "software developer". Searching that keyword near Miami returned just 1 posting, and a plain "software" keyword pulled in unrelated jobs such as medical coders. Filtering by occupational series 2210 (IT Management) and 1550 (Computer Science) instead returns relevant tech postings.
+> **Tip:** USAJOBS only lists federal jobs, and federal job titles rarely say "software developer". That keyword returned just 1 posting in Miami, while "information technology" returned 188, and the top 20 are almost all tech roles. That's the search used for the included file.
 
 ## How to contribute
 Fork this repo, pick an open issue, and open a pull request. The interface (CLI, notebook, or web app) is your team's choice — the issues specify the outcome, not the implementation.
